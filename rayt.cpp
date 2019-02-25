@@ -663,11 +663,11 @@ namespace rayt {
 
 			// Camera
 
-			vec3 lookfrom(278, 278, -800);
+			vec3 lookfrom(278, 278, -50);
 			vec3 lookat(278, 278, 0);
 			vec3 vup(0, 1, 0);
 			float aspect = float(m_image->width()) / float(m_image->height());
-			m_camera = std::make_unique<Camera>(lookfrom, lookat, vup, 40, aspect);
+			m_camera = std::make_unique<Camera>(lookfrom, lookat, vup, 160, aspect);
 
 			// Shapes
 
@@ -678,18 +678,25 @@ namespace rayt {
 			MaterialPtr green = std::make_shared<Lambertian>(
 				std::make_shared<ColorTexture>(vec3(0.12f, 0.45f, 0.15f)));
 			MaterialPtr light = std::make_shared<DiffuseLight>(
-				std::make_shared<ColorTexture>(vec3(15.0f)));
+				std::make_shared<ColorTexture>(vec3(50.0f)));
 			MaterialPtr metal = std::make_shared<Dielectric>(1.5f);
 
 			ShapeList* world = new ShapeList();
 			ShapeBuilder builder;
+
+			const float light_x0 = 300;
+			const float light_x1 = 400;
+			const float light_y0 = 250;
+			const float light_y1 = 350;
+			const float light_z = -50;
+			world->add(builder.rectXY(light_x0, light_x1, light_y0, light_y1, light_z, light).get());
+
 			world->add(builder.rectYZ(0, 555, 0, 555, 555, green).flip().get());
 			world->add(builder.rectYZ(0, 555, 0, 555, 0, red).get());
-			world->add(builder.rectXZ(213, 343, 227, 332, 554, light).flip().get());
 			world->add(builder.rectXZ(0, 555, 0, 555, 555, white).flip().get());
 			world->add(builder.rectXZ(0, 555, 0, 555, 0, white).get());
 			world->add(builder.rectXY(0, 555, 0, 555, 555, white).flip().get());
-			world->add(builder.sphere(vec3(190, 90, 190), 90, metal).get());
+			//world->add(builder.sphere(vec3(190, 90, 190), 90, metal).get());
 			world->add(builder.box(vec3(0), vec3(165, 330, 165), white)
 				.rotate(vec3::yAxis(), 15)
 				.translate(vec3(265, 0, 295))
@@ -697,19 +704,19 @@ namespace rayt {
 			m_world.reset(world);
 
 			ShapeList* l = new ShapeList();
-			l->add(builder.rectXZ(213, 343, 227, 332, 554, MaterialPtr()).get());
-			l->add(builder.sphere(vec3(190, 90, 190), 90, MaterialPtr()).get());
+			l->add(builder.rectXY(light_x0, light_x1, light_y0, light_y1, light_z, MaterialPtr()).get());
+			//l->add(builder.sphere(vec3(190, 90, 190), 90, MaterialPtr()).get());
 			m_light.reset(l);
 		}
 
-		vec3 color(const rayt::Ray& r, const Shape* world, const Shape* light, int depth) {
+		vec3 color(const rayt::Ray& r, const Shape* world, const Shape* light, const int depth, const int maxDepth = MAX_DEPTH) {
 			HitRec hrec;
 			if (world->hit(r, 0.001f, FLT_MAX, hrec)) {
 				vec3 emitted = hrec.mat->emitted(r, hrec);
 				ScatterRec srec;
-				if (depth < MAX_DEPTH && hrec.mat->scatter(r, hrec, srec)) {
+				if (depth < maxDepth && hrec.mat->scatter(r, hrec, srec)) {
 					if (srec.is_specular) {
-						return emitted + mulPerElem(srec.albedo, color(srec.ray, world, light, depth + 1));
+						return emitted + mulPerElem(srec.albedo, color(srec.ray, world, light, depth + 1, maxDepth));
 					}
 					else {
 						ShapePdf shapePdf(light, hrec.p);
@@ -719,7 +726,7 @@ namespace rayt {
 						if (pdf_value > 0) {
 							float spdf_value = hrec.mat->scattering_pdf(srec.ray, hrec);
 							vec3 albedo = srec.albedo * spdf_value;
-							return emitted + mulPerElem(albedo, color(srec.ray, world, light, depth + 1)) / pdf_value;
+							return emitted + mulPerElem(albedo, color(srec.ray, world, light, depth + 1, maxDepth)) / pdf_value;
 						}
 						else {
 							return emitted;
@@ -785,7 +792,7 @@ int main()
 
 	int nx = 200;
 	int ny = 200;
-	int ns = 1000;
+	int ns = 10000;
 	std::unique_ptr<rayt::Scene> scene(std::make_unique<rayt::Scene>(nx, ny, ns));
 	scene->render();
 	return 0;

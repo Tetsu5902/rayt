@@ -27,8 +27,8 @@
 #include <vector>
 #include <algorithm>
 
-#define MAX_DEPTH 50
-#define NUM_THREAD 8
+#define MAX_DEPTH 2
+#define NUM_THREAD 4
 
 #include <float.h>	// FLT_MIN, FLT_MAX
 #define PI 3.14159265359f
